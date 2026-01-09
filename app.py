@@ -2,6 +2,8 @@ import logging
 import io
 import re
 import requests
+import threading
+import sqlite3
 from collections import defaultdict
 from datetime import datetime
 from flask import Flask, request, jsonify
@@ -10,23 +12,19 @@ from telegram.ext import (
     ApplicationBuilder,
     MessageHandler,
     CommandHandler,
-    ContextTypes,
     ConversationHandler,
+    ContextTypes,
     filters
 )
 from openpyxl import load_workbook, Workbook
-import threading
-import sqlite3
+import os
 
 # ===================== CONFIGURAÇÃO =====================
 TELEGRAM_TOKEN = "8505967080:AAGXzmGZYUK3BxrTEM0hd_sQhq6uZEEePa4"
 MP_ACCESS_TOKEN = "APP_USR-264234346131232-071723-2b11d40f943d9721d869863410833122-777482543"
 
 # ===================== LOG =====================
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    level=logging.INFO
-)
+logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
 
 # ===================== FLASK =====================
 app = Flask(__name__)
@@ -46,8 +44,9 @@ def webhook():
         if payment_id:
             payment = consultar_pagamento(payment_id)
             if payment.get("status") == "approved":
-                telegram_id = payment.get("external_reference")
+                telegram_id = int(payment.get("external_reference"))
                 creditos = int(payment.get("transaction_amount", 0))
+
                 with get_db() as conn:
                     conn.execute("""
                         INSERT INTO usuarios (telegram_id, creditos)
@@ -55,17 +54,21 @@ def webhook():
                         ON CONFLICT(telegram_id)
                         DO UPDATE SET creditos = creditos + ?
                     """, (telegram_id, creditos, creditos))
-                    try:
-                        bot = Bot(token=TELEGRAM_TOKEN)
-                        bot.send_message(
-                            chat_id=telegram_id,
-                            text=f"✅ Pagamento aprovado! {creditos} créditos adicionados à sua conta."
-                        )
-                    except Exception as e:
-                        print("Erro enviando mensagem Telegram:", e)
+                    conn.execute("""
+                        UPDATE pagamentos SET status='approved' WHERE telegram_id=? AND status='pending'
+                    """, (telegram_id,))
+
+                try:
+                    bot = Bot(token=TELEGRAM_TOKEN)
+                    bot.send_message(
+                        chat_id=telegram_id,
+                        text=f"✅ Pagamento aprovado! {creditos} créditos adicionados à sua conta."
+                    )
+                except Exception as e:
+                    logging.error(f"Erro enviando mensagem Telegram: {e}")
         return jsonify({"status": "ok"}), 200
     except Exception as e:
-        print("Erro no webhook:", e)
+        logging.error(f"Erro no webhook: {e}")
         return jsonify({"status": "ok"}), 200
 
 def consultar_pagamento(payment_id):
@@ -162,9 +165,7 @@ def corrigir_planilha(file_bytes):
             chave = extrair_chave(endereco)
             agrupado[chave].append(seq)
             if chave not in dados_extra:
-                dados_extra[chave] = [
-                    ws.cell(row=row, column=col).value for col in range(1, ws.max_column + 1)
-                ]
+                dados_extra[chave] = [ws.cell(row=row, column=col).value for col in range(1, ws.max_column + 1)]
                 dados_extra[chave][headers.index("Destination Address")] = endereco
 
     wb_novo = Workbook()
@@ -286,11 +287,12 @@ def start_telegram():
     )
     app_telegram.add_handler(comprar_handler)
     app_telegram.add_handler(MessageHandler(filters.Document.ALL, handle_document))
-    logging.info("🤖 Bot Telegram iniciado e aguardando ações...")
+    logging.info("🤖 Bot Telegram iniciado e aguardando mensagens...")
     app_telegram.run_polling()
 
-
+# ===================== MAIN =====================
 if __name__ == "__main__":
-    # Flask em thread separada
-    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=8080), daemon=True).start()
+    PORT = int(os.environ.get("PORT", 8080))
+    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=PORT), daemon=True).start()
+    print(f"🌐 Webhook rodando em http://0.0.0.0:{PORT}")
     start_telegram()

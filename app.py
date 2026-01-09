@@ -4,7 +4,7 @@ import os
 
 app = Flask(__name__)
 
-ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
+ACCESS_TOKEN = os.getenv("APP_USR-264234346131232-071723-2b11d40f943d9721d869863410833122-777482543")
 
 @app.route("/", methods=["GET"])
 def home():

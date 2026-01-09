@@ -306,9 +306,11 @@ def start_telegram():
     logging.info("🤖 Bot Telegram iniciado e aguardando mensagens...")
     app_telegram.run_polling()
 
-# ===================== MAIN =====================
 if __name__ == "__main__":
     PORT = int(os.environ.get("PORT", 8080))
     threading.Thread(target=lambda: app.run(host="0.0.0.0", port=PORT), daemon=True).start()
     print(f"🌐 Webhook rodando em http://0.0.0.0:{PORT}")
+
+    # Inicia o bot Telegram
     start_telegram()
+

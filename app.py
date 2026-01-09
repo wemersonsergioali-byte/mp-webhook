@@ -19,8 +19,8 @@ import threading
 import sqlite3
 
 # ===================== CONFIGURAÇÃO =====================
-TELEGRAM_TOKEN = "SEU_TOKEN_TELEGRAM_AQUI"
-MP_ACCESS_TOKEN = "SEU_ACCESS_TOKEN_MERCADO_PAGO_AQUI"
+TELEGRAM_TOKEN = "8505967080:AAGXzmGZYUK3BxrTEM0hd_sQhq6uZEEePa4"
+MP_ACCESS_TOKEN = "APP_USR-264234346131232-071723-2b11d40f943d9721d869863410833122-777482543"
 
 # ===================== LOG =====================
 logging.basicConfig(

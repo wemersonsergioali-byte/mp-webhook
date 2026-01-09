@@ -23,6 +23,7 @@ import os
 TELEGRAM_TOKEN = "8505967080:AAGXzmGZYUK3BxrTEM0hd_sQhq6uZEEePa4"
 MP_ACCESS_TOKEN = "APP_USR-264234346131232-071723-2b11d40f943d9721d869863410833122-777482543"
 
+
 # ===================== LOG =====================
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
 
@@ -195,6 +196,16 @@ def saudacao():
         return "Boa noite 🌙"
 
 # ===================== BOT TELEGRAM =====================
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "👋 Olá! Eu sou seu bot.\n\n"
+        "Comandos disponíveis:\n"
+        "• /saldo → ver seus créditos\n"
+        "• /comprar → adquirir novos créditos\n"
+        "• /cancelar → cancelar operação\n\n"
+        "Você também pode me enviar uma planilha Excel (.xlsx) para processar."
+    )
+
 async def saldo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     with get_db() as conn:
@@ -279,6 +290,10 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ===================== START =====================
 def start_telegram():
     app_telegram = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+
+    # Novo handler para /start
+    app_telegram.add_handler(CommandHandler("start", start))
+
     app_telegram.add_handler(CommandHandler("saldo", saldo))
     comprar_handler = ConversationHandler(
         entry_points=[CommandHandler("comprar", comprar)],
@@ -287,6 +302,7 @@ def start_telegram():
     )
     app_telegram.add_handler(comprar_handler)
     app_telegram.add_handler(MessageHandler(filters.Document.ALL, handle_document))
+
     logging.info("🤖 Bot Telegram iniciado e aguardando mensagens...")
     app_telegram.run_polling()
 
